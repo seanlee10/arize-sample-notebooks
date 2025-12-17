@@ -6,12 +6,12 @@ A collection of Jupyter notebooks demonstrating Arize AI platform capabilities f
 
 | Notebook | Description |
 |----------|-------------|
-| `01_ingest.ipynb` | Set up OpenTelemetry tracing for LangChain agents with Arize |
-| `02_dataset_read.ipynb` | Create and read datasets, run experiments with custom evaluators |
-| `03_code_eval.ipynb` | Evaluate LLM outputs using custom code-based evaluators |
-| `04_llm_eval.ipynb` | LLM-as-a-judge evaluation patterns |
-| `05_eval_mmlu.ipynb` | Evaluate models on the MMLU benchmark |
-| `06_eval_livecodebench.ipynb` | Evaluate code generation on LiveCodeBench |
+| `01_ingest.ipynb` | OpenTelemetry tracing setup for LangChain agents with a weather tool example |
+| `02_dataset.ipynb` | Create and read evaluation datasets via Arize REST API |
+| `03_code_eval.ipynb` | Run experiments with custom code-based evaluators |
+| `04_llm_eval.ipynb` | LLM-as-a-judge evaluation for hallucination detection |
+| `05_eval_mmlu.ipynb` | Evaluate models on MMLU (multiple choice questions) |
+| `06_eval_livecodebench.ipynb` | Evaluate code generation using Phoenix evaluators |
 
 ## Installation
 
@@ -19,6 +19,7 @@ A collection of Jupyter notebooks demonstrating Arize AI platform capabilities f
 pip install arize arize-otel arize-phoenix[evals]
 pip install openinference-instrumentation-langchain
 pip install langchain langchain-openai openai
+pip install datasets  # for LiveCodeBench
 ```
 
 ## Quick Start
@@ -39,7 +40,7 @@ tracer_provider = register(
 LangChainInstrumentor().instrument(tracer_provider=tracer_provider)
 ```
 
-### 2. Running Experiments
+### 2. Running Experiments with Code Evaluators
 
 ```python
 from arize.experimental.datasets import ArizeDatasetsClient
@@ -65,11 +66,26 @@ client.run_experiment(
 )
 ```
 
+### 3. Running Experiments with LLM Evaluators
+
+```python
+from arize.experimental.datasets.experiments.evaluators.base import EvaluationResult, LLMEvaluator
+
+class HallucinationEvaluator(LLMEvaluator):
+    template = "Classify if this response is factual or hallucinated: {response}"
+
+    def evaluate(self, *, output, dataset_row, **_):
+        result = self.llm.invoke(self.template.format(response=output))
+        label = "factual" if "factual" in result.lower() else "hallucinated"
+        return EvaluationResult(score=1.0 if label == "factual" else 0.0, label=label)
+```
+
 ## Configuration
 
 Set these environment variables or pass directly to the client:
 
 - `ARIZE_API_KEY` - Your Arize API key
+- `ARIZE_SPACE_ID` - Your Arize space ID
 - `OPENAI_API_KEY` - OpenAI API key (for LLM-based evaluators)
 
 ## Resources
